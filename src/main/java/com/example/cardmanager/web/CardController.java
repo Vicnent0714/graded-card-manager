@@ -221,8 +221,18 @@ public class CardController {
         return "redirect:/cards";
     }
 
+
+    @GetMapping("/cards/delete-single/{id}")
+    public String deleteSingleCard(@PathVariable Long id, HttpSession session) {
+        return deleteCardCommon(id, session);
+    }
+
     @PostMapping("/cards/delete/{id}")
     public String deleteCard(@PathVariable Long id, HttpSession session) {
+        return deleteCardCommon(id, session);
+    }
+
+    private String deleteCardCommon(Long id, HttpSession session) {
 
         User loginUser = (User) session.getAttribute("loginUser");
         if (loginUser == null) {
@@ -230,7 +240,11 @@ public class CardController {
         }
 
         Card card = cardRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid card ID: " + id));
+                .orElse(null);
+
+        if (card == null) {
+            return "redirect:/cards";
+        }
 
         if (card.getUserId() == null || !card.getUserId().equals(loginUser.getId())) {
             return "redirect:/cards";
