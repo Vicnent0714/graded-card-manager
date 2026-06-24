@@ -22,12 +22,16 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.cardmanager.model.Card;
 import com.example.cardmanager.model.User;
 import com.example.cardmanager.repository.CardRepository;
+import com.example.cardmanager.service.CardService;
 
 @Controller
 public class CardController {
 
     @Autowired
     private CardRepository cardRepository;
+
+    @Autowired
+    private CardService cardService;
 
     @GetMapping({"/cards", "/cards/list"})
     public String list(
@@ -221,7 +225,6 @@ public class CardController {
         return "redirect:/cards";
     }
 
-
     @GetMapping("/cards/delete-single/{id}")
     public String deleteSingleCard(@PathVariable Long id, HttpSession session) {
         return deleteCardCommon(id, session);
@@ -239,54 +242,24 @@ public class CardController {
             return "redirect:/login";
         }
 
-        Card card = cardRepository.findById(id)
-                .orElse(null);
+        cardService.deleteCard(id, loginUser);
 
-        if (card == null) {
-            return "redirect:/cards";
-        }
-
-        if (card.getUserId() == null || !card.getUserId().equals(loginUser.getId())) {
-            return "redirect:/cards";
-        }
-
-        if (card.getImagePath() != null && !card.getImagePath().equals("default-card.jpg")) {
-            try {
-                Files.deleteIfExists(Paths.get("uploads/" + card.getImagePath()));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        cardRepository.deleteById(id);
         return "redirect:/cards";
     }
 
     @PostMapping("/cards/bulk-delete")
-    public String bulkDelete(@RequestParam(name = "cardIds", required = false) List<Long> cardIds, HttpSession session) {
-        
+    public String bulkDelete(
+            @RequestParam(name = "cardIds", required = false) List<Long> cardIds,
+            HttpSession session
+    ) {
+
         User loginUser = (User) session.getAttribute("loginUser");
         if (loginUser == null) {
             return "redirect:/login";
         }
 
-        if (cardIds != null && !cardIds.isEmpty()) {
-            for (Long id : cardIds) {
-                cardRepository.findById(id).ifPresent(card -> {
-                    if (card.getUserId() != null && card.getUserId().equals(loginUser.getId())) {
-                        if (card.getImagePath() != null && !card.getImagePath().equals("default-card.jpg")) {
-                            try {
-                                Files.deleteIfExists(Paths.get("uploads/" + card.getImagePath()));
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        cardRepository.deleteById(id);
-                    }
-                });
-            }
-        }
-        
+        cardService.bulkDeleteCards(cardIds, loginUser);
+
         return "redirect:/cards";
     }
 }
